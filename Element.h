@@ -5,10 +5,32 @@
 
 #include "vec2.h"
 
-class Circle
+typedef struct Circle {
+    
+	vec2f center;
+    float radius;
+
+    float x = center.x;
+    float y = center.y;
+    float r = radius;
+};
+
+typedef struct Rect {
+    float x;
+    float y;
+    float width;
+    float height;
+
+    float w = width;
+    float h = height;
+
+    vec2f center = { x + (width / 2), y + (height / 2)};
+};
+
+class Element
 {
 public:
-    Circle(vec2f pos, int r, SDL_Color col) : pos(pos), pos_last(pos), radius(r), color(col) {}
+    Element(vec2f pos, int r, SDL_Color col) : pos(pos), pos_last(pos), radius(r), color(col) {}
 
     void update(float dt)
     {

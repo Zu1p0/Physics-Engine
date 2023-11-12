@@ -5,7 +5,6 @@
 #include <ctime>
 #include <cmath>
 
-
 #include "vec2.h"
 #include "Element.h"
 #include "Solver.h"
@@ -48,62 +47,77 @@ int main(int argc, char* argv[]) {
     Solver solver = Solver(renderer);
     solver.set_sub_steps(1);
     solver.set_gravity({ 0,800 });
-    solver.setConstraint({ (float)WINDOW_WIDTH / 2, (float)WINDOW_HEIGHT / 2 }, 300);
+    solver.add_constraint(
+        Circle({400, 400 }, 300 )
+    );
+    solver.add_constraint(
+        Circle({ 600, 400 }, 300)
+    );
     
     bool quit = false;
     SDL_Event event;
 
     Uint32 startTime = SDL_GetTicks();
     Uint32 elapsedTime = 0;
-    const Uint32 interval = 200; // 1000 milliseconds = 1 second
-    
+    const Uint32 interval = 200; 
+
+    int mousex = (float)WINDOW_WIDTH / 2;
+    int mousey = (float)WINDOW_HEIGHT / 2;
+	bool mousepressed = false;
+     
     while (!quit) {
-
-        // Handle Events //
-
         while (SDL_PollEvent(&event)) {
             switch (event.type) {
+
             case SDL_QUIT:
                 quit = true;
                 break;
+
+            case SDL_MOUSEMOTION:
+                mousex = event.button.x;
+                mousey = event.button.y;
+                break;
+
             case SDL_MOUSEBUTTONDOWN:
                 if (event.button.button == SDL_BUTTON_LEFT) {
-                    const int mouse_x = event.button.x;
-					const int mouse_y = event.button.y;
-
-                    solver.add_object({ (float)mouse_x, (float)mouse_y }, 10, get_random_color());
+                    //solver.add_object({ (float)mousex, (float)mousey }, 10, get_random_color());
+                    mousepressed = true;
                 }
                 break;
 
+            case SDL_MOUSEBUTTONUP:
+                if (event.button.button == SDL_BUTTON_LEFT) {
+                    mousepressed = false;
+                }
+                break;
             }
         }
-        
-        elapsedTime = SDL_GetTicks() - startTime;
-        if (elapsedTime >= interval) {
-            
-            solver.add_object({ (float)WINDOW_WIDTH / 2, (float)WINDOW_HEIGHT / 2 }, 5, get_random_color());
-            
-            startTime = SDL_GetTicks();
+
+        if (mousepressed) {
+            elapsedTime = SDL_GetTicks() - startTime;
+            if (elapsedTime >= interval) {
+                for (int i = -20; i <= 20; i+=10) {
+                    solver.add_object({ (float)mousex+i, (float)mousey }, 5, get_random_color());
+                }
+                solver.add_object({ (float)mousex, (float)mousey }, 5, get_random_color());
+                startTime = SDL_GetTicks();
+            }
         }
 
         // Update //
-
 		solver.update();
 
         // Render //
-
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
 
         solver.render();
 
         SDL_RenderPresent(renderer);
-    }
+    }   
 
     // Quit SDL
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
-
-    return 0;
 }

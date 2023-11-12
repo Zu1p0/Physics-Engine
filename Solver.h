@@ -3,6 +3,7 @@
 #include <SDL.h>
 #include <vector>
 #include <iostream>
+#include <variant>
 
 #include "Element.h"
 #include "vec2.h"
@@ -25,7 +26,7 @@ public:
     }
 
     void render() {
-        for (Circle& circle : m_objects) {
+        for (Element& circle : m_objects) {
             circle.render(renderer);
         }
     }
@@ -39,17 +40,16 @@ public:
     }
 
     void add_object(vec2f pos, int r, SDL_Color col) {
-        m_objects.emplace_back(Circle(pos, r, col));
+        m_objects.emplace_back(Element(pos, r, col));
     }
 
-    const std::vector<Circle>& get_objects() const {
+    const std::vector<Element>& get_objects() const {
         return m_objects;
     }
 
-    void setConstraint(vec2f pos, float radius)
+    void add_constraint(std::variant<Circle, Rect> constraint)
     {
-        m_constraint_center = pos;
-        m_constraint_radius = radius;
+		m_constraints.emplace_back(constraint);
     }
 
 private:
@@ -58,16 +58,15 @@ private:
     uint32_t m_sub_steps = 1;
     vec2f m_gravity = { 0, 0 };
 
-    vec2f m_constraint_center = { 0, 0 };
-    float m_constraint_radius = 10;
+    std::vector<std::variant<Circle, Rect>> m_constraints;
 
-    std::vector<Circle> m_objects;
+    std::vector<Element> m_objects;
 
     Uint64 m_now = SDL_GetPerformanceCounter();
     Uint64 m_last = 0;
 
     void apply_gravity() {
-        for (Circle& obj: m_objects) {
+        for (Element& obj: m_objects) {
 			obj.accelerate(m_gravity);
         }
     }
@@ -84,7 +83,7 @@ private:
     }
 
     void update_objects(double step_dt) {
-        for (Circle& obj : m_objects) {
+        for (Element& obj : m_objects) {
 			obj.update(step_dt);
         }
     }
@@ -93,13 +92,11 @@ private:
         const float response_coef = 0.75;
 		const uint64_t object_count = m_objects.size();
 
-        
-
         for (uint64_t i = 0; i < object_count; i++) {
-			Circle& obj1 = m_objects[i];
+			Element& obj1 = m_objects[i];
             
             for (uint64_t j = i + 1; j < object_count; j++) {
-                Circle& obj2 = m_objects[j];
+                Element& obj2 = m_objects[j];
                 
                 vec2f v = obj1.pos - obj2.pos;
                 const float dist2 = v.x * v.x + v.y * v.y;
@@ -125,14 +122,17 @@ private:
 
     void apply_constraint()
     {
-        for (auto& obj : m_objects) {
-            vec2f v = m_constraint_center - obj.pos;
-            double dist = sqrt(v.x * v.x + v.y * v.y);
-            if (dist > (m_constraint_radius - obj.radius)) {
-                vec2f n = v / dist;
-                vec2f temp = (n * (m_constraint_radius - obj.radius));
-                //obj.accelerate(temp * 2);
-                obj.pos = (m_constraint_center - temp);
+        for (auto& constraint : m_constraints) {
+            if (std::holds_alternative<Circle>(constraint)) {
+                for (Element& obj : m_objects) {
+                    vec2f v = std::get<Circle>(constraint).center - obj.pos;
+                    double dist = sqrt(v.x * v.x + v.y * v.y);
+                    if (dist > (std::get<Circle>(constraint).radius - obj.radius)) {
+                        vec2f n = v / dist;
+                        vec2f temp = (n * (std::get<Circle>(constraint).radius - obj.radius));
+                        obj.pos = (std::get<Circle>(constraint).center - temp);
+                    }
+                }
             }
         }
     }
